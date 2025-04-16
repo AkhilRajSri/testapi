@@ -1,17 +1,25 @@
-<h2>Rectangle Creator</h2>
+<h2>Shape Creator</h2>
 <p>Count: <input id="count" type="number" value="5"></p>
+<p>Shape:
+  <select id="shape">
+    <option value="rectangle">Rectangle</option>
+    <option value="ellipse">Ellipse</option>
+  </select>
+</p>
+<p>Color: <input id="color" type="color" value="#ff8000"></p>
 <button id="create">Create</button>
 <button id="cancel">Cancel</button>
 <script>
-
 document.getElementById('create').onclick = () => {
-  const textbox = document.getElementById('count');
-  const count = parseInt(textbox.value, 10);
-  parent.postMessage({ pluginMessage: { type: 'create-shapes', count } }, '*')
-}
-
+  const countInput = document.getElementById('count') as HTMLInputElement;
+  const count = parseInt(countInput.value, 10) || 1;
+  const shapeSelect = document.getElementById('shape') as HTMLSelectElement;
+  const shape = shapeSelect.value;
+  const colorInput = document.getElementById('color') as HTMLInputElement;
+  const color = colorInput.value;
+  parent.postMessage({ pluginMessage: { type: 'create-shapes', count, shape, color } }, '*');
+};
 document.getElementById('cancel').onclick = () => {
-  parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')
-}
-
+  parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
+};
 </script>
