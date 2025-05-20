@@ -25,6 +25,16 @@
   From: <input id="gradientFrom" type="color" value="#ff0000" />
   To: <input id="gradientTo" type="color" value="#0000ff" />
 </p>
+<p>
+  Width: <input id="width" type="range" min="10" max="300" value="100" />
+</p>
+<p>
+  Height: <input id="height" type="range" min="10" max="300" value="100" />
+</p>
+<p>
+  Rotation: <input id="rotation" type="range" min="0" max="360" value="0" />
+</p>
+<button id="add">Add Shape</button>
 <button id="cancel">Close</button>
 <script>
 const shapeEl = document.getElementById('shape');
@@ -33,6 +43,9 @@ const useGradientEl = document.getElementById('useGradient');
 const colorEl = document.getElementById('color');
 const gradientFromEl = document.getElementById('gradientFrom');
 const gradientToEl = document.getElementById('gradientTo');
+const widthEl = document.getElementById('width');
+const heightEl = document.getElementById('height');
+const rotationEl = document.getElementById('rotation');
 
 function updateVisibility() {
   document.getElementById('polygon-options').style.display = shapeEl.value === 'polygon' ? 'block' : 'none';
@@ -40,11 +53,15 @@ function updateVisibility() {
   document.getElementById('color-section').style.display = useGradientEl.checked ? 'none' : 'block';
 }
 
-function sendUpdate() {
-  const message = {
+function sendUpdate(add = false) {
+  const message: any = {
     type: 'update',
+    add,
     shape: shapeEl.value,
     edges: parseInt(edgesEl.value, 10) || 3,
+    width: parseInt(widthEl.value, 10) || 100,
+    height: parseInt(heightEl.value, 10) || 100,
+    rotation: parseInt(rotationEl.value, 10) || 0,
   };
   if (useGradientEl.checked) {
     message.gradientFrom = gradientFromEl.value;
@@ -61,6 +78,10 @@ useGradientEl.onchange = () => { updateVisibility(); sendUpdate(); };
 colorEl.oninput = sendUpdate;
 gradientFromEl.oninput = sendUpdate;
 gradientToEl.oninput = sendUpdate;
+widthEl.oninput = sendUpdate;
+heightEl.oninput = sendUpdate;
+rotationEl.oninput = sendUpdate;
+document.getElementById('add').onclick = () => sendUpdate(true);
 window.onload = () => { updateVisibility(); sendUpdate(); };
 document.getElementById('cancel').onclick = () => {
   parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
