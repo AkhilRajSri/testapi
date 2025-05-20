@@ -1,25 +1,70 @@
+<!DOCTYPE html>
+<html>
+<body>
 <h2>Shape Creator</h2>
-<p>Count: <input id="count" type="number" value="5"></p>
-<p>Shape:
+<p>
+  Shape:
   <select id="shape">
     <option value="rectangle">Rectangle</option>
+    <option value="square">Square</option>
     <option value="ellipse">Ellipse</option>
+    <option value="circle">Circle</option>
+    <option value="polygon">Polygon</option>
   </select>
 </p>
-<p>Color: <input id="color" type="color" value="#ff8000"></p>
-<button id="create">Create</button>
-<button id="cancel">Cancel</button>
+<p id="polygon-options" style="display:none">
+  Sides: <input id="edges" type="number" min="3" value="5" />
+</p>
+<p>
+  <label><input type="checkbox" id="useGradient" /> Use Gradient</label>
+</p>
+<p id="color-section">
+  Color: <input id="color" type="color" value="#ff8000" />
+</p>
+<p id="gradient-section" style="display:none">
+  From: <input id="gradientFrom" type="color" value="#ff0000" />
+  To: <input id="gradientTo" type="color" value="#0000ff" />
+</p>
+<button id="cancel">Close</button>
 <script>
-document.getElementById('create').onclick = () => {
-  const countInput = document.getElementById('count') as HTMLInputElement;
-  const count = parseInt(countInput.value, 10) || 1;
-  const shapeSelect = document.getElementById('shape') as HTMLSelectElement;
-  const shape = shapeSelect.value;
-  const colorInput = document.getElementById('color') as HTMLInputElement;
-  const color = colorInput.value;
-  parent.postMessage({ pluginMessage: { type: 'create-shapes', count, shape, color } }, '*');
-};
+const shapeEl = document.getElementById('shape');
+const edgesEl = document.getElementById('edges');
+const useGradientEl = document.getElementById('useGradient');
+const colorEl = document.getElementById('color');
+const gradientFromEl = document.getElementById('gradientFrom');
+const gradientToEl = document.getElementById('gradientTo');
+
+function updateVisibility() {
+  document.getElementById('polygon-options').style.display = shapeEl.value === 'polygon' ? 'block' : 'none';
+  document.getElementById('gradient-section').style.display = useGradientEl.checked ? 'block' : 'none';
+  document.getElementById('color-section').style.display = useGradientEl.checked ? 'none' : 'block';
+}
+
+function sendUpdate() {
+  const message = {
+    type: 'update',
+    shape: shapeEl.value,
+    edges: parseInt(edgesEl.value, 10) || 3,
+  };
+  if (useGradientEl.checked) {
+    message.gradientFrom = gradientFromEl.value;
+    message.gradientTo = gradientToEl.value;
+  } else {
+    message.color = colorEl.value;
+  }
+  parent.postMessage({ pluginMessage: message }, '*');
+}
+
+shapeEl.onchange = () => { updateVisibility(); sendUpdate(); };
+edgesEl.oninput = sendUpdate;
+useGradientEl.onchange = () => { updateVisibility(); sendUpdate(); };
+colorEl.oninput = sendUpdate;
+gradientFromEl.oninput = sendUpdate;
+gradientToEl.oninput = sendUpdate;
+window.onload = () => { updateVisibility(); sendUpdate(); };
 document.getElementById('cancel').onclick = () => {
   parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
 };
 </script>
+</body>
+</html>

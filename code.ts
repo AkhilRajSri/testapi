@@ -1,15 +1,5 @@
-// This plugin will open a window to prompt the user to create shapes.
-// It supports rectangles and ellipses, with user-chosen colors.
+figma.showUI(__html__, { width: 260, height: 320 });
 
-// This file holds the main code for plugins. Code in this file has access to
-// the *figma document* via the figma global object.
-// You can access browser APIs in the <script> tag inside "ui.html" which has a
-// full browser environment (See https://www.figma.com/plugin-docs/how-plugins-run).
-
-// Show the HTML page in "ui.html".
-figma.showUI(__html__);
-
-// Convert a hex color string (#RRGGBB) to an RGB object with values 0–1
 function hexToRgb(hex: string): RGB {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) {
@@ -22,36 +12,91 @@ function hexToRgb(hex: string): RGB {
   };
 }
 
-// Handle messages sent from the UI
-figma.ui.onmessage = (msg: { type: string; count?: number; shape?: string; color?: string }) => {
-  if (msg.type === 'create-shapes') {
-    const count = msg.count || 1;
-    const shape = msg.shape || 'rectangle';
-    const colorHex = msg.color || '#ff8000';
-    const fillColor = hexToRgb(colorHex);
+interface UpdateMessage {
+  type: 'update';
+  shape: string;
+  edges?: number;
+  color?: string;
+  gradientFrom?: string;
+  gradientTo?: string;
+}
 
-    const nodes: SceneNode[] = [];
-    for (let i = 0; i < count; i++) {
-      let node: SceneNode;
-      switch (shape) {
-        case 'ellipse':
-          node = figma.createEllipse();
-          break;
-        default:
-          node = figma.createRectangle();
-      }
-      node.x = i * 150;
-      node.y = 0;
-      if ('fills' in node) {
-        (node as GeometryMixin).fills = [{ type: 'SOLID', color: fillColor }];
-      }
-      figma.currentPage.appendChild(node);
-      nodes.push(node);
-    }
-    figma.currentPage.selection = nodes;
-    figma.viewport.scrollAndZoomIntoView(nodes);
-    figma.closePlugin();
+let currentNode: SceneNode | null = null;
+
+function createShape(shape: string, edges: number): SceneNode {
+  let node: SceneNode;
+  switch (shape) {
+    case 'circle':
+      node = figma.createEllipse();
+      (node as EllipseNode).resize(100, 100);
+      break;
+    case 'ellipse':
+      node = figma.createEllipse();
+      (node as EllipseNode).resize(150, 100);
+      break;
+    case 'square':
+      node = figma.createRectangle();
+      (node as RectangleNode).resize(100, 100);
+      break;
+    case 'rectangle':
+      node = figma.createRectangle();
+      (node as RectangleNode).resize(150, 100);
+      break;
+    case 'polygon':
+      node = figma.createPolygon();
+      (node as PolygonNode).pointCount = edges;
+      (node as PolygonNode).resize(150, 150);
+      break;
+    default:
+      node = figma.createRectangle();
+  }
+  node.x = 0;
+  node.y = 0;
+  return node;
+}
+
+function applyFill(node: SceneNode, colorHex?: string, fromHex?: string, toHex?: string) {
+  if (!('fills' in node)) return;
+  let paints: Paint[] = [];
+  if (fromHex && toHex) {
+    const from = hexToRgb(fromHex);
+    const to = hexToRgb(toHex);
+    paints = [
+      {
+        type: 'GRADIENT_LINEAR',
+        gradientStops: [
+          { color: { ...from, a: 1 }, position: 0 },
+          { color: { ...to, a: 1 }, position: 1 },
+        ],
+        gradientTransform: [
+          [1, 0, 0],
+          [0, 1, 0],
+        ],
+      },
+    ];
+  } else if (colorHex) {
+    const color = hexToRgb(colorHex);
+    paints = [
+      {
+        type: 'SOLID',
+        color,
+      },
+    ];
+  }
+  (node as GeometryMixin).fills = paints;
+}
+
+figma.ui.onmessage = (msg: UpdateMessage | { type: 'cancel' }) => {
+  if (msg.type === 'update') {
+    const { shape, edges = 3, color, gradientFrom, gradientTo } = msg;
+    if (currentNode) currentNode.remove();
+    currentNode = createShape(shape, edges);
+    applyFill(currentNode, color, gradientFrom, gradientTo);
+    figma.currentPage.appendChild(currentNode);
+    figma.currentPage.selection = [currentNode];
+    figma.viewport.scrollAndZoomIntoView([currentNode]);
   } else if (msg.type === 'cancel') {
+    if (currentNode) currentNode.remove();
     figma.closePlugin();
   }
 };
