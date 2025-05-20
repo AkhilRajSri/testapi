@@ -14,38 +14,42 @@ function hexToRgb(hex: string): RGB {
 
 interface UpdateMessage {
   type: 'update';
+  add?: boolean;
   shape: string;
   edges?: number;
+  width: number;
+  height: number;
+  rotation: number;
   color?: string;
   gradientFrom?: string;
   gradientTo?: string;
 }
 
-let currentNode: SceneNode | null = null;
+let previewNode: SceneNode | null = null;
 
-function createShape(shape: string, edges: number): SceneNode {
+function createShape(shape: string, edges: number, width: number, height: number): SceneNode {
   let node: SceneNode;
   switch (shape) {
     case 'circle':
       node = figma.createEllipse();
-      (node as EllipseNode).resize(100, 100);
+      (node as EllipseNode).resize(width, height);
       break;
     case 'ellipse':
       node = figma.createEllipse();
-      (node as EllipseNode).resize(150, 100);
+      (node as EllipseNode).resize(width, height);
       break;
     case 'square':
       node = figma.createRectangle();
-      (node as RectangleNode).resize(100, 100);
+      (node as RectangleNode).resize(width, height);
       break;
     case 'rectangle':
       node = figma.createRectangle();
-      (node as RectangleNode).resize(150, 100);
+      (node as RectangleNode).resize(width, height);
       break;
     case 'polygon':
       node = figma.createPolygon();
       (node as PolygonNode).pointCount = edges;
-      (node as PolygonNode).resize(150, 150);
+      (node as PolygonNode).resize(width, height);
       break;
     default:
       node = figma.createRectangle();
@@ -88,15 +92,41 @@ function applyFill(node: SceneNode, colorHex?: string, fromHex?: string, toHex?:
 
 figma.ui.onmessage = (msg: UpdateMessage | { type: 'cancel' }) => {
   if (msg.type === 'update') {
-    const { shape, edges = 3, color, gradientFrom, gradientTo } = msg;
-    if (currentNode) currentNode.remove();
-    currentNode = createShape(shape, edges);
-    applyFill(currentNode, color, gradientFrom, gradientTo);
-    figma.currentPage.appendChild(currentNode);
-    figma.currentPage.selection = [currentNode];
-    figma.viewport.scrollAndZoomIntoView([currentNode]);
+    const {
+      add = false,
+      shape,
+      edges = 3,
+      width,
+      height,
+      rotation,
+      color,
+      gradientFrom,
+      gradientTo,
+    } = msg;
+
+    if (add) {
+      if (previewNode) {
+        // Finalize the current preview so it stays on the canvas
+        previewNode = null;
+      } else {
+        const node = createShape(shape, edges, width, height);
+        (node as LayoutMixin).rotation = rotation;
+        applyFill(node, color, gradientFrom, gradientTo);
+        figma.currentPage.appendChild(node);
+        figma.currentPage.selection = [node];
+        figma.viewport.scrollAndZoomIntoView([node]);
+      }
+    } else {
+      if (previewNode) previewNode.remove();
+      previewNode = createShape(shape, edges, width, height);
+      (previewNode as LayoutMixin).rotation = rotation;
+      applyFill(previewNode, color, gradientFrom, gradientTo);
+      figma.currentPage.appendChild(previewNode);
+      figma.currentPage.selection = [previewNode];
+      figma.viewport.scrollAndZoomIntoView([previewNode]);
+    }
   } else if (msg.type === 'cancel') {
-    if (currentNode) currentNode.remove();
+    if (previewNode) previewNode.remove();
     figma.closePlugin();
   }
 };
